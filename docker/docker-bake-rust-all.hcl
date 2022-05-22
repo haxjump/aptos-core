@@ -4,10 +4,17 @@
 
 variable "BUILD_DATE" {}
 
-// this is the short GIT_SHA1 (8 chars). Tagging our docker images with that one is kinda deprecated and we might remove this in future.
-variable "GIT_REV" {}
+variable "GITHUB_SHA" {}
 // this is the full GIT_SHA1 - let's use that as primary identify going forward
-variable "GIT_SHA1" {}
+variable "GIT_SHA1" {
+  default = "${GITHUB_SHA}"
+}
+// this is the short GIT_SHA1 (8 chars). Tagging our docker images with that one is kinda deprecated and we might remove this in future.
+variable "GIT_REV" {
+  default = substr("${GIT_SHA1}", 0, 8)
+}
+
+variable "GCP_DOCKER_ARTIFACT_REPO" {}
 
 variable "AWS_ECR_ACCOUNT_NUM" {}
 
@@ -67,49 +74,49 @@ target "validator" {
   inherits = ["_common"]
   target   = "validator"
   cache-to = generate_cache_to("validator")
-  tags     = generate_tags("validator")
+  tags = generate_tags("validator")
 }
 
 target "indexer" {
   inherits = ["_common"]
   target   = "indexer"
   cache-to = generate_cache_to("indexer")
-  tags     = generate_tags("indexer")
+  tags = generate_tags("indexer")
 }
 
 target "safety-rules" {
   inherits = ["_common"]
   target   = "safety-rules"
   cache-to = generate_cache_to("validator_tcb")
-  tags     = generate_tags("validator_tcb")
+  tags = generate_tags("validator_tcb")
 }
 
 target "tools" {
   inherits = ["_common"]
   target   = "tools"
   cache-to = generate_cache_to("tools")
-  tags     = generate_tags("tools")
+  tags = generate_tags("tools")
 }
 
 target "init" {
   inherits = ["_common"]
   target   = "init"
   cache-to = generate_cache_to("init")
-  tags     = generate_tags("init")
+  tags = generate_tags("init")
 }
 
 target "txn-emitter" {
   inherits = ["_common"]
   target   = "txn-emitter"
   cache-to = generate_cache_to("txn-emitter")
-  tags     = generate_tags("txn-emitter")
+  tags = generate_tags("txn-emitter")
 }
 
 target "faucet" {
   inherits = ["_common"]
   target   = "faucet"
   cache-to = generate_cache_to("faucet")
-  tags     = generate_tags("faucet")
+  tags = generate_tags("faucet")
   args = {
     IMAGE_TARGET = "test"
   }
@@ -119,7 +126,7 @@ target "forge" {
   inherits = ["_common"]
   target   = "forge"
   cache-to = generate_cache_to("forge")
-  tags     = generate_tags("forge")
+  tags = generate_tags("forge")
   args = {
     IMAGE_TARGET = "test"
   }
@@ -127,19 +134,21 @@ target "forge" {
 
 function "generate_cache_from" {
   params = [target]
-  result = "type=registry,ref=${gh_image_cache}/${target}"
+  result = "type=registry,ref=${GCP_DOCKER_ARTIFACT_REPO}/${target}"
 }
 
 function "generate_cache_to" {
   params = [target]
-  result = ["type=registry,ref=${gh_image_cache}/${target},mode=max"]
+  result = ["type=registry,ref=${GCP_DOCKER_ARTIFACT_REPO}/${target},mode=max"]
 }
 
 function "generate_tags" {
   params = [target]
   result = [
+
+    "${GCP_DOCKER_ARTIFACT_REPO}/${target}:${GIT_SHA1}",
     // "${ecr_base}/${target}:dev_${GIT_REV}",
-    // "${ecr_base}/${target}:${GIT_REV}",
-    "${ecr_base}/${target}:${GIT_SHA1}", // only tag with full GIT_SHA1 unless it turns out we really need any of the other variations
+
+    // "${ecr_base}/${target}:${GIT_SHA1}", // only tag with full GIT_SHA1 unless it turns out we really need any of the other variations
   ]
 }
